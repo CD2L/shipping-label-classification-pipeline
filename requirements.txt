@@ -1,0 +1,7 @@
+pytesseract
+numpy
+torch
+tensorflow
+opencv-python
+streamlit
+PIL
