@@ -2,7 +2,7 @@
 
 This project aims to use deep learning algorithms to detect whether a product is counterfeit by analyzing images of boxes and their labels. This repository is a PoC Demo of how the pipeline actually works using web scraped images.
 
-![Pipeline](./pipeline.svg)
+![Pipeline](./files/pipeline.svg)
 
 You can download all pre-trained models via the [link](https://drive.google.com/file/d/1cJOny4WFzIUuGLXxJlAnG0BSijZW-NMn/view).
 
@@ -16,6 +16,8 @@ cd ..
 pip install -r ./requirements.txt
 ```
 
+Please refer to this this [link](https://tesseract-ocr.github.io/tessdoc/Downloads.html) to download the latest version of Tesseract.
+
 ## Getting started
 After cloning this repository, you can now run this command:
 ```shell
@@ -26,4 +28,4 @@ Once the service is up,  you can interact with its UI: [http://localhost:8501](h
 
 ## Demo
 
-![Demo](demo.png)
+![Demo](./files/demo.png)
