@@ -1,8 +1,10 @@
 # Shipping Label Classification Pipeline
 
-This project aims to use deep learning algorithms to detect whether a product is counterfeit by analyzing images of the box and its labels.
+This project aims to use deep learning algorithms to detect whether a product is counterfeit by analyzing images of boxes and their labels. This repository is a PoC Demo of how the pipeline actually works using web scraped images.
 
-This repository is PoC Demo using web scraped images, realized during sprints, of how the pipeline actually works.
+![Pipeline](./pipeline.svg)
+
+You can download all pre-trained models via the [link](https://drive.google.com/file/d/1cJOny4WFzIUuGLXxJlAnG0BSijZW-NMn/view).
 
 ## Dependencies
 The pipeline requires a number of packages to run. You can install them in a virtual environment on your machine via the command :
@@ -24,4 +26,4 @@ Once the service is up,  you can interact with its UI: [http://localhost:8501](h
 
 ## Demo
 
-![Demo](files/demo.png)
+![Demo](demo.png)
