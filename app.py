@@ -3,6 +3,7 @@ from PIL import Image
 import requests
 from io import BytesIO
 import numpy as np
+import re
 
 import torch
 import tensorflow as tf  
@@ -93,9 +94,13 @@ def OCR(im: np.ndarray, scale: int = 0):
 
 
 
-def preprocessing(X,y = None,max_words = 200):
+def preprocessing(X,y = None,max_words_w = 200, max_words_c=100):
     with open('./models/tokenizer.pickle', 'rb') as handle:
         tokenizer = pickle.load(handle)
+    translator = str.maketrans(string.punctuation, ' '*len(string.punctuation))
+    
+    with open('./models/tokenizer_w.pickle', 'rb') as handle:
+        tokenizer_w = pickle.load(handle)
     translator = str.maketrans(string.punctuation, ' '*len(string.punctuation))
     
     X_ = []
@@ -106,18 +111,26 @@ def preprocessing(X,y = None,max_words = 200):
         X_.append(tmp_sentence)
     X = X_.copy()
     
-    X = tokenizer.texts_to_sequences(X)
-    X = sequence.pad_sequences(X, maxlen=max_words, padding='post')
+    X_encoded =  X.copy()
+    X_encoded = map(lambda x: re.sub(r" +", " " , x), X_encoded)
 
-    # X = X.reshape(int(X.shape[0]/2),2,X.shape[1])
+    X_c = tokenizer.texts_to_sequences(X_encoded)
+    X_c = sequence.pad_sequences(X_c, maxlen=max_words_c, padding='post')
+
+    X_encoded =  X.copy()
+    X_encoded = map(lambda x: re.sub(r'\d+', '#', x), X_encoded)
+    X_encoded = map(lambda x: re.sub(r"\b\S+\b", "W" , x), X_encoded)
+    X_encoded = map(lambda x: re.sub(r" +", " " , x), X_encoded)
+    
+    X_w = tokenizer_w.texts_to_sequences(X_encoded)
+    X_w = sequence.pad_sequences(X_w, maxlen=max_words_w, padding='post')
 
     if y is not None:
-        y = y.map({'sender_details': 0, 'receiver_details': 1, 'unknown': 2})
+        y = y.map({'address': 0,'code': 1, 'contact': 2, 'other': 3})
         y = to_categorical(y)
-        # y = y.reshape(int(y.shape[0]/2),2,y.shape[1])
-        return X,y
+        return X_c, X_w,y
     else :
-        return X
+        return X_c, X_w
 
 
 # filename = st.file_uploader("Select an image to upload.", type=["png", "jpg", "jpeg"])
@@ -153,15 +166,17 @@ for id, b in enumerate(bboxes):
     all_boxes.append(box)   
 
 
-all_texts_addr = preprocessing(all_texts)
-out = model_ident.predict(all_texts_addr)
+all_texts_addr_c, all_texts_addr_w = preprocessing(all_texts)
+out = model_ident.predict([all_texts_addr_c, all_texts_addr_w])
+
 
 # st.write(all_texts[np.where(out[:, 0] > .5, out[:, 0], all_texts)])
-addr_idx = [i for i, elt in enumerate((out > 0.5)[:, 0]) if elt == True]
+#addr_idx = [i for i, elt in enumerate((out > 0.5)[:, 0]) if elt == True]
+addr_idx = [ idx for idx, _ in sorted(enumerate(out[:,0]), key=lambda x: x[1])[-2:]]
 
 all_texts_new, all_boxes_new, all_decoded_addr, all_bboxes_new = [], [], [], []
 for i in addr_idx:
-    all_texts_new.append(all_texts_addr[i])
+    all_texts_new.append(all_texts_addr_c[i])
     all_boxes_new.append(all_boxes[i])
     all_bboxes_new.append(bboxes[i])
     all_decoded_addr.append(all_texts[i])
@@ -172,7 +187,6 @@ for i in addr_idx:
 # st.write(out)
 # st.write(all_texts_new)
 # st.write(all_texts)
-
 
 addr_a = all_texts_new[0].reshape(1, -1)
 addr_b = all_texts_new[1].reshape(1, -1)
