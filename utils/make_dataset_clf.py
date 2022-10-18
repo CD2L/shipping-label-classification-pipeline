@@ -1,6 +1,9 @@
 from random import randint, randrange, choice, shuffle, random
 import os
 
+output_folder = './'
+
+
 label_text = {
     "sender_details" : [
         "sender", 
@@ -91,15 +94,15 @@ def generate_text(type):
     line = random_line("street_name.txt")
     txt_arr = line.split()
     txt_arr.insert(randint(0,len(txt_arr)-1), label_text[type][k])
-    shuffle(txt_arr)
+    
     return " ".join(txt_arr)
     
-if os.path.exists("./generated-data/generated.csv"):
-  os.remove("./generated-data/generated.csv")
+if os.path.exists(output_folder+"generated.csv"):
+  os.remove(output_folder+"generated.csv")
 
-with open("generated-data/generated.csv", "x", encoding="utf-8") as f:
+with open(output_folder+"generated.csv", "x", encoding="utf-8") as f:
     f.write(f"label;text;width;height\n")
-    for i in range(500):
+    for i in range(2000):
         size_s, size_r = generate_blocs_size()
 
         txt_s = generate_text("sender_details")
