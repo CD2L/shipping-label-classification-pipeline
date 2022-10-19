@@ -62,7 +62,7 @@ st.write("""
 
 CLASSES = ['sender', 'receiver', 'unknown']
 
-model_clf = load_model("./models/00_addr_clf.h5")
+model_clf = load_model("./models/03_addr_clf.h5")
 model_ident = TFAutoModelForSequenceClassification.from_pretrained("./models/addr-ident-model")
 
 @st.cache
@@ -178,11 +178,11 @@ for i in addr_idx:
 # st.write(all_texts)
 
 tokenized_data = preprocessing(all_decoded_addr)
+st.write(tokenized_data)
 addr_a = tokenized_data[0].reshape(1, -1)
 addr_b = tokenized_data[1].reshape(1, -1)
 
 # st.write(addr_a)
-
 out = model_clf.predict({'input_addr_1': addr_a, 'input_addr_2': addr_b})
 # st.write(out)
 
@@ -206,9 +206,8 @@ for id, b in enumerate(all_bboxes_new):
     # st.write(X)
     # st.write(type(X))
 
-
     # pred = model_clf.predict(X)
-    title = np.array(['Sender', 'Receiver', 'Unknown'])
+    title = np.array(['Sender', 'Receiver'])
     cols[3].write(
-        np.vstack((title, out[id][0][:])).T
+        np.vstack((title, out[id][:])).T
     )
