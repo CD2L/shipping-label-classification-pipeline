@@ -3,7 +3,7 @@ from datetime import datetime
 import random
 from faker import Faker
 
-faker = Faker(['cz_CZ', 'fr_FR','en_US', 'en_GB','it_IT','ja_JP','zh_CN', 'pt_PT', 'uk', 'no', 'pl'])
+faker = Faker(['en_US', 'en_GB'])
 
 bruit = '@/!:|\&")°ç^-([]#~%?,<>abcdefghijklmnopqrstuvwxyz'
     
@@ -24,7 +24,6 @@ def fake_contact():
     for i in infos:
         k = random.randint(0,len(lst)-1)
         lst.insert(k,i)
-    
     if rand_bruit < 0.05:
         return add_bruit(" ".join(lst))
     else:
@@ -96,8 +95,8 @@ def add_bruit(sentence):
 
     return sentence_c
 
-with open('./generated-data/street_name.txt', 'r', encoding='UTF-8') as f:
-    output_f = open('./generated-data/generated.csv', 'w', encoding='UTF-8')
+with open('./street_name.txt', 'r', encoding='UTF-8') as f:
+    output_f = open('./generated.csv', 'w', encoding='UTF-8')
     output_f.write(f"label;text\n")
     for i in iter(f.readlines()):
         addr = i.strip()
