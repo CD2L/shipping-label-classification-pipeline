@@ -62,8 +62,8 @@ st.write("""
 
 CLASSES = ['sender', 'receiver', 'unknown']
 
-model_clf = load_model("./models/00_addr_clf.h5")
-model_ident = TFAutoModelForSequenceClassification.from_pretrained("./models/addr-ident-model")
+model_clf = load_model("./models/03_addr_clf.h5")
+model_ident = load_model("./models/15_addr_identification.h5")
 
 @st.cache
 def OCR(im: np.ndarray, scale: int = 0):
@@ -93,12 +93,12 @@ def OCR(im: np.ndarray, scale: int = 0):
 
     return text, bbox
 
-
-
-
 def preprocessing(X,y = None, max_words_c=200):
-    with open('./models/tokenizer.pickle', 'rb') as handle:
+    with open('./models/tokenizer_clf.pickle', 'rb') as handle:
         tokenizer = pickle.load(handle)
+
+    str_to_replace = ',;:!?./§&~"#([-|`_\\^@)]=}²<>%$£¤*+'
+
     translator = str.maketrans(string.punctuation, ' '*len(string.punctuation))
         
     X_ = []
@@ -106,6 +106,15 @@ def preprocessing(X,y = None, max_words_c=200):
         tmp_sentence = sentence.lower()
         tmp_sentence = tmp_sentence.replace('\n', '')
         tmp_sentence = tmp_sentence.translate(translator)
+        tmp_sentence = tmp_sentence.translate(translator2)
+        
+        tmp_sentence = re.sub(r"\d{6,}", "$" , tmp_sentence)
+        tmp_sentence = re.sub(r"\d{4,6}", "####" , tmp_sentence)
+        tmp_sentence = re.sub(r"\d{3,4}", "###" , tmp_sentence)
+        tmp_sentence = re.sub(r"\d{2,3}", "##" , tmp_sentence)
+        tmp_sentence = re.sub(r"\d", "#" , tmp_sentence)
+        tmp_sentence = re.sub(r"(\b\S+\b)", r"@\1" , tmp_sentence)
+        tmp_sentence = re.sub(r' ', '', tmp_sentence)
         X_.append(tmp_sentence)
     X = X_.copy()
     
@@ -116,7 +125,39 @@ def preprocessing(X,y = None, max_words_c=200):
     X_c = sequence.pad_sequences(X_c, maxlen=max_words_c, padding='post')
     return X_c
 
+def preprocessing_addr_identification(X,y = None,max_words_c = 200, max_words_w = 100):
+    with open('./models/tokenizer_ident.pickle', 'rb') as handle:
+        tokenizer = pickle.load(handle)
 
+    str_to_replace = ',;:!?./§&~"#([-|`_\\^@)]=}²<>%$£¤*+'
+
+    translator = str.maketrans(string.punctuation, ' '*len(string.punctuation))
+    translator2 = str.maketrans(str_to_replace, ' '*len(str_to_replace)) 
+
+    X_ = []
+    for i, sentence in enumerate(X):
+        tmp_sentence = sentence.lower()
+        tmp_sentence = tmp_sentence.replace('\n', '')
+        tmp_sentence = tmp_sentence.translate(translator)
+        tmp_sentence = tmp_sentence.translate(translator2)
+        
+        tmp_sentence = re.sub(r"\d{6,}", "$" , tmp_sentence)
+        tmp_sentence = re.sub(r"\d{4,6}", "####" , tmp_sentence)
+        tmp_sentence = re.sub(r"\d{3,4}", "###" , tmp_sentence)
+        tmp_sentence = re.sub(r"\d{2,3}", "##" , tmp_sentence)
+        tmp_sentence = re.sub(r"\d", "#" , tmp_sentence)
+        tmp_sentence = re.sub(r"(\b\S+\b)", r"@\1" , tmp_sentence)
+        tmp_sentence = re.sub(r' ', '', tmp_sentence)
+        X_.append(tmp_sentence)
+    X = X_.copy()
+
+    X_clvl = tokenizer.texts_to_sequences(X)
+    X_clvl = sequence.pad_sequences(X_clvl, maxlen=max_words_c, padding='post')
+
+    return X_clvl
+
+    return X
+        
 # filename = st.file_uploader("Select an image to upload.", type=["png", "jpg", "jpeg"])
 url = st.text_input("Enter a HTTP URL to an image", "https://a2btracking.com/wp-content/uploads/2017/07/MSL_RFID-1-e1499715334881.jpg")
 im = np.array(Image.open(BytesIO(requests.get(url).content)).convert("L"))
@@ -126,6 +167,10 @@ cols[0].image(im, caption="Uploaded image", use_column_width=None, width=500)
 
 # Shipping label detection using YOLOv5
 model_label_detection = torch.hub.load("yolov5/", "custom", path="./models/00_label_detection.pt", source="local")
+model_label_detection.conf = 0.5
+model_label_detection.iou = 0.5
+model_label_detection.augment = True
+
 im_with_bboxes = model_label_detection(im.copy())
 
 cols[1].image(im_with_bboxes.render(),
@@ -135,7 +180,7 @@ if os.path.exists("runs/"):
     shutil.rmtree("runs/")
 
 # Get bounding boxes
-bboxes = model_label_detection(im.copy()).crop(save=False)
+bboxes = model_label_detection(im.copy()).crop(save=False, )
 bboxes = [np.array(bboxes[i]["im"]) for i in range(len(bboxes))]
 
 rows = st.columns(len(bboxes))
@@ -149,20 +194,16 @@ for id, b in enumerate(bboxes):
     all_texts.append(text)
     all_boxes.append(box)   
 
-with open("./models/tokenizer_addr_identification.pickle", "rb") as handle:
-    tokenizer = pickle.load(handle)
+tokenized_data = preprocessing_addr_identification(all_texts)
+out = model_ident.predict(tokenized_data)
 
-tokenized_data = []
-for i in all_texts:
-    tokenized_data.append(tokenizer.encode(i,truncation=True,padding=True,return_tensors="np"))
-
-out = []
-for i in tokenized_data:
-    out.append(np.array(model_ident.predict(i)[0]))
 out = np.array(out)
-out = out.reshape(out.shape[0],-1)
 
-addr_idx = [ idx for idx, _ in sorted(enumerate(out[:,1]), key=lambda x: x[1])[-2:]]
+addr_idx = [ idx for idx, _ in sorted(enumerate(out[:,0]), key=lambda x: x[1])[-2:]]
+
+st.write(addr_idx)
+st.write(all_texts)
+st.write(out)
 
 all_texts_new, all_boxes_new, all_decoded_addr, all_bboxes_new = [], [], [], []
 for i in addr_idx:
@@ -178,11 +219,11 @@ for i in addr_idx:
 # st.write(all_texts)
 
 tokenized_data = preprocessing(all_decoded_addr)
+st.write(tokenized_data)
 addr_a = tokenized_data[0].reshape(1, -1)
 addr_b = tokenized_data[1].reshape(1, -1)
 
 # st.write(addr_a)
-
 out = model_clf.predict({'input_addr_1': addr_a, 'input_addr_2': addr_b})
 # st.write(out)
 
@@ -200,15 +241,11 @@ for id, b in enumerate(all_bboxes_new):
     cols[1].image(all_boxes_new[id])
     cols[2].write(all_decoded_addr[id])
 
-    X = preprocessing(all_texts[id])[0]
-    X = np.array(X[0]).reshape(1,-1)
-
     # st.write(X)
     # st.write(type(X))
 
-
     # pred = model_clf.predict(X)
-    title = np.array(['Sender', 'Receiver', 'Unknown'])
+    title = np.array(['Sender', 'Receiver'])
     cols[3].write(
-        np.vstack((title, out[id][0][:])).T
+        np.vstack((title, out[id][:])).T
     )

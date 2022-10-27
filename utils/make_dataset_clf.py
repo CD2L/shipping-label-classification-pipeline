@@ -1,6 +1,9 @@
 from random import randint, randrange, choice, shuffle, random
 import os
 
+output_folder = './'
+
+
 label_text = {
     "sender_details" : [
         "sender", 
@@ -50,6 +53,8 @@ label_text = {
         "to" ,
         "ship to",
         "destinataire",
+        "delivery",
+        "delivery address",
         "dest",
         "dest.",
         "доставить",
@@ -86,36 +91,42 @@ def random_line(fname):
     lines = open(fname,"r",encoding="utf-8").read().splitlines()
     return choice(lines)
 
-def generate_text(type):
+def generate_text(type, keyword_presence = True):
     k = randint(0,len(label_text[type])-1)
     line = random_line("street_name.txt")
-    txt_arr = line.split()
-    txt_arr.insert(randint(0,len(txt_arr)-1), label_text[type][k])
-    shuffle(txt_arr)
-    return " ".join(txt_arr)
+    if keyword_presence:
+        txt_arr = line.split()
+        txt_arr.insert(randint(0,len(txt_arr)-1), label_text[type][k])
+        shuffle(txt_arr)
+        return " ".join(txt_arr)
+    return line
     
-if os.path.exists("./generated-data/generated.csv"):
-  os.remove("./generated-data/generated.csv")
+if os.path.exists(output_folder+"generated.csv"):
+  os.remove(output_folder+"generated.csv")
 
-with open("generated-data/generated.csv", "x", encoding="utf-8") as f:
+with open(output_folder+"generated.csv", "x", encoding="utf-8") as f:
     f.write(f"label;text;width;height\n")
-    for i in range(500):
+    for i in range(3000):
         size_s, size_r = generate_blocs_size()
 
-        txt_s = generate_text("sender_details")
-        txt_r = generate_text("receiver_details")
-        txt_u = generate_text("unknown")
-        
+        if random() < 0.33:
+            if random() < 0.5:
+                txt_s = generate_text("sender_details", False)
+                txt_r = generate_text("receiver_details")
+            else :
+                txt_s = generate_text("sender_details")
+                txt_r = generate_text("receiver_details", False)
+        else : 
+            txt_s = generate_text("sender_details")
+            txt_r = generate_text("receiver_details")
+
         lst = [
             f"sender_details;{txt_s};{size_s[0]};{size_s[1]}\n",
-            f"receiver_details;{txt_r};{size_r[0]};{size_r[1]}\n",
-            f"unknown;{txt_u};{size_r[0]};{size_r[1]}\n"
+            f"receiver_details;{txt_r};{size_r[0]};{size_r[1]}\n"
         ]
-        
         shuffle(lst)
+        
         for i, str in enumerate(lst):
-            if i > 1:
-                break
             f.write(str)
             
     f.close()
