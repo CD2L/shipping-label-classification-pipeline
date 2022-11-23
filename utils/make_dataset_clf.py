@@ -91,39 +91,56 @@ def random_line(fname):
     lines = open(fname,"r",encoding="utf-8").read().splitlines()
     return choice(lines)
 
+def add_bruit(word, chance=.1):
+    if len(word) < 1 : return word
+    if random() > chance : return word
+    
+    bruit = 'abcdefghijklmnopqrstuvwxyz!:,?./§ù*%µ^$¨£=+)°à0ç_è-(\'"é&œ´~#{[|`\^@]}'
+    rand_idx = randint(0,len(bruit)-1)
+    char = bruit[rand_idx]
+    
+    word_lst = [*word]
+    rand_pos = randint(0, len(word)-1)
+    word_lst[rand_pos] = char
+    
+    return ''.join(word_lst)
+
 def generate_text(type, keyword_presence = True):
     k = randint(0,len(label_text[type])-1)
-    line = random_line("street_name.txt")
+    line = random_line("./utils/street_name.init")
     if keyword_presence:
         txt_arr = line.split()
-        txt_arr.insert(randint(0,len(txt_arr)-1), label_text[type][k])
+        txt_arr.insert(randint(0,len(txt_arr)-1), add_bruit(label_text[type][k],0.12))
         shuffle(txt_arr)
         return " ".join(txt_arr)
     return line
-    
-if os.path.exists(output_folder+"generated.csv"):
-  os.remove(output_folder+"generated.csv")
 
-with open(output_folder+"generated.csv", "x", encoding="utf-8") as f:
+    
+if os.path.exists(output_folder+"generated_clf.csv"):
+  os.remove(output_folder+"generated_clf.csv")
+
+with open(output_folder+"generated_clf.csv", "x", encoding="utf-8") as f:
     f.write(f"label;text;width;height\n")
-    for i in range(3000):
+    for i in range(5000):
         size_s, size_r = generate_blocs_size()
 
-        if random() < 0.33:
-            if random() < 0.5:
-                txt_s = generate_text("sender_details", False)
-                txt_r = generate_text("receiver_details")
-            else :
-                txt_s = generate_text("sender_details")
-                txt_r = generate_text("receiver_details", False)
-        else : 
+        r = random()
+        if r < 0.33: 
+            txt_s = generate_text("sender_details",False)
+            txt_r = generate_text("receiver_details")
+        elif r < 0.66:
+            txt_s = generate_text("sender_details")
+            txt_r = generate_text("receiver_details", False)
+        else:
             txt_s = generate_text("sender_details")
             txt_r = generate_text("receiver_details")
-
+            
+            
         lst = [
             f"sender_details;{txt_s};{size_s[0]};{size_s[1]}\n",
-            f"receiver_details;{txt_r};{size_r[0]};{size_r[1]}\n"
+            f"receiver_details;{txt_r};{size_r[0]};{size_r[1]}\n",
         ]
+
         shuffle(lst)
         
         for i, str in enumerate(lst):
