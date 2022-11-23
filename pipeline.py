@@ -21,6 +21,8 @@ from tensorflow.keras.preprocessing import sequence
 from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.models import load_model
 
+from detectron2.engine import DefaultPredictor
+
 from gensim.models import KeyedVectors
 
 import string
@@ -41,12 +43,14 @@ from sklearn.metrics import confusion_matrix, accuracy_score
 
 from nltk.translate.bleu_score import sentence_bleu
 
+from utils.functions import *
+
 ## CONST #################
 CLASSES = ['sender', 'receiver']
 
 image_url = ''  
 
-## MODELS #############
+## MODELS ###############
 def plot_confusion_matrix(y_pred, y_true, classes):
     cm = confusion_matrix(y_pred, y_true,normalize='true')
     fig, ax = plt.subplots(figsize=(10,10))
@@ -62,7 +66,20 @@ def plot_confusion_matrix(y_pred, y_true, classes):
     
     plt.title('Confusion matrix')
     plt.show()
+
+def label_localization(img_path, cfg_save_path = "./models/OD_cfg.pickle"):
+    with open(cfg_save_path, 'rb') as f:
+        cfg = pickle.load(f)
+    cfg.MODEL.DEVICE = 'cuda:0'
+    cfg.MODEL.WEIGHTS = os.path.join("./models/", "label_localization.pth")
+    cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.5
+    cfg.MODEL.MASK_ON = False
+    cfg.SOLVER.CHECKPOINT_PERIOD = 1000
     
+    predictor = DefaultPredictor(cfg)
+
+    return on_image(img_path, predictor)
+
 def yolo(url):
     im = np.array(Image.open(BytesIO(requests.get(url).content)).convert("L"))
     
@@ -361,9 +378,16 @@ def ocr_test(test_dir = './utils/data-examples/ocr/', json_file = 'references.js
 
 ## MAIN ###################
 def main():
+    res = label_localization("./utils/data-examples/label_localization/1.jpg")
+    bboxes = get_bboxes_from(res, [0])
+    for bbox in bboxes:
+        res = crop(bbox, "./utils/data-examples/label_localization/1.jpg")
+  
+        plt.figure(figsize=(14,10))
+        plt.imshow(res)
+        plt.show()
+
     return 0
 
 if __name__ == '__main__':
     main()
-
-
