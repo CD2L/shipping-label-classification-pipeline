@@ -67,7 +67,7 @@ def get_bboxes_from(outputs, classes = []):
 
     pred_classes = outputs['instances'].pred_classes
 
-    out = torch.isin(pred_classes, torch.tensor(classes, device='cuda:0'), invert=True)
+    out = torch.isin(pred_classes, torch.tensor(classes, device='cuda:0'))
 
     idx_lst = [] 
     for idx, i in enumerate(out):
@@ -78,12 +78,11 @@ def get_bboxes_from(outputs, classes = []):
 
 
 def crop(bbox, in_img: str):
-    img = np.array(cv2.imread(in_img))
+    img = np.array(cv2.imread(in_img, cv2.COLOR_RGB2GRAY))
     """ bbox is a list with xmin, ymin, xmax, ymax """
     xmin, ymin, xmax, ymax = bbox
-    print(int(xmin))
-
-    cropped_im = img[int(xmin):int(xmax), int(ymin):int(ymax)]
+    
+    cropped_im = img[int(ymin):int(ymax),int(xmin):int(xmax)]
     return cropped_im
 
     
