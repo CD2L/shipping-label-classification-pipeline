@@ -2,6 +2,7 @@ import numpy as np
 import cv2
 
 from .processor import *
+import matplotlib.pyplot as plt
 
 class Extractor():
     def __init__(self) -> None:
@@ -11,32 +12,40 @@ class Extractor():
             Sobel(),
         ]
 
-        self.hough = Hough()
+        self.detect = Detect()
+        self.out_hist = []
     
     def __call__(self, im):
-        out_hist = []
+        im = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY) if len(im.shape) > 2 else im
+        self.out_hist.append(im)
 
-        out = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY) if len(im.shape) > 2 else im
-        out_hist.append(out)
-
-        x = out.copy()
+        # PRE-PROCESSING
+        out = im.copy()
         for op in self.preprocess:
             out = op(out)
-            out_hist.append(out)
+            self.out_hist.append(out)
         
-        lines = self.hough(out)
-        inter = self.hough.get_intersections(x, lines)
-        points = self.hough.find_quadrilaterals(inter)
+        # OPS TO DETECT THE TARGET 
+        lines, intersections, points = self.detect(out)
+        x = im.copy()
+        x = self.extract(x, intersections)
 
-        drawn_lines = self.hough.draw_lines(x, lines)
-        drawn_points = self.hough.draw_points(x, points)
-        out_hist.append(drawn_lines)
-        out_hist.append(drawn_points)
 
-        out = self.extract(x, inter)
-        out_hist.append(out)
 
-        return (out, out_hist)
+        # VISUALIZATION
+        dl = self.detect.draw_lines(im, lines)
+        dp = self.detect.draw_points(im, points)
+        self.out_hist.append(dl)
+        self.out_hist.append(dp)
+
+        # POST-PROCESSING
+        # x = cv2.equalizeHist(x)
+        # x = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8)).apply(x)
+
+        # x = Binarize(100, 255, cv2.THRESH_BINARY)(x)
+        self.out_hist.append(x)
+
+        return self.out_hist
 
     def order_points(self, pts):
         rect = np.zeros((4, 2), dtype = "float32")
@@ -51,7 +60,7 @@ class Extractor():
         return rect
 
     def extract(self, im, inters):
-        imc = im.copy()
+        imc = im.astype("uint8").copy()
 
         pts = np.array([
             (x, y)
@@ -82,3 +91,16 @@ class Extractor():
                 (maxWidth, maxHeight))
 
         return warped
+
+    def plot(self, *im, title=None, save=None, cmap="gray"):
+        plt.figure(dpi=600)
+        plt.axis("off")
+        
+        im = np.concatenate(im, axis=1)
+        plt.imshow(im, interpolation="nearest", cmap=cmap)
+
+        if title is not None:
+            plt.title(title)
+        if save is not None:
+            output_path = save + ".jpg"
+            plt.savefig(output_path, bbox_inches="tight")

@@ -1,38 +1,35 @@
-import cv2
-
-from utils.label_extractor import Extractor
+from utils.scanner import Extractor
 import matplotlib.pyplot as plt
 
+import cv2
 import numpy as np
+import time
 
 
-def plot(*im, title=None, save=None, cmap="gray"):
-    plt.figure(dpi=600)
-    plt.axis("off")
-    
-    im = np.concatenate(im, axis=1)
-    plt.imshow(im, interpolation="nearest", cmap=cmap)
+import argparse
+parser = argparse.ArgumentParser()
+parser.add_argument("--image", type=str)
 
-    if title is not None:
-        plt.title(title)
-    if save is not None:
-        output_path = save + ".jpg"
-        plt.savefig(output_path, bbox_inches="tight")
-
-        
-ext = Extractor()
+args = parser.parse_args()
+filename = args.image
 
 
 # FOR TESTING
-idx=33
-filename = f"{idx}.jpg"
 
 im = cv2.imread(filename)
-out, hist = ext(im)
 
-plot(*hist[:-1], title=None, save=f"{idx}_viz_steps", cmap="gray")
+start = time.process_time()
+ext = Extractor()
+hist = ext(im)
+end = time.process_time()
 
-fig, ax = plt.subplots(nrows=1, ncols=2)
+print(
+    f"Processing time: {round((end - start)*1e3)} milliseconds"
+)
+
+ext.plot(*hist[:-1], title=None, save=f"xxx_viz_steps", cmap="gray")
+
+fig, ax = plt.subplots(nrows=1, ncols=2, dpi=1200)
 fig.tight_layout()
 fig.subplots_adjust(top=0.88)
 
@@ -44,4 +41,4 @@ ax[1].imshow(hist[-1], cmap="gray")
 ax[1].set_title("After")
 ax[1].axis("off")
 
-fig.savefig(f"{idx}_viz_out.jpg", dpi=600)
+fig.savefig(f"xxx_viz_out.jpg")

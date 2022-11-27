@@ -5,14 +5,15 @@ from itertools import combinations
 from sklearn.cluster import KMeans
 
 class Binarize():
-    def __init__(self, thresh1=0, thresh2=255):
+    def __init__(self, thresh1=0, thresh2=255, mode=cv2.THRESH_BINARY + cv2.THRESH_OTSU):
         self.thresh1 = thresh1
         self.thresh2 = thresh2
+        self.mode = mode
 
     def __call__(self, im):        
         return cv2.threshold(
             im, self.thresh1, self.thresh2,
-            cv2.THRESH_BINARY + cv2.THRESH_OTSU,
+            self.mode,
         )[1]
 
 class MorphologicalTransformation():
@@ -40,16 +41,19 @@ class Sobel():
 
         return np.where(grad > self.thresh, 255, 0)
 
-class Hough():
+class Detect():
     def __init__(self, rho=1, theta=np.pi/180, thresh=100):
         self.rho = rho
         self.theta = theta
         self.thresh = thresh
 
     def __call__(self, im):
-        im = im.astype(np.uint8)
-        return cv2.HoughLines(im, self.rho, self.theta, self.thresh)
+        imc = im.astype("uint8").copy()
+        lines = cv2.HoughLines(imc, self.rho, self.theta, self.thresh)
+        intersections = self.get_intersections(imc, lines)
+        points = self.find_quadrilaterals(intersections)
 
+        return lines, intersections, points
 
     def get_angle(self, line1, line2):
         rho1, theta1 = line1
