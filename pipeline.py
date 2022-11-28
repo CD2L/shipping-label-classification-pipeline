@@ -21,6 +21,8 @@ from tensorflow.keras.preprocessing import sequence
 from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.models import load_model
 
+from detectron2.engine import DefaultPredictor
+
 from gensim.models import KeyedVectors
 
 import string
@@ -41,12 +43,14 @@ from sklearn.metrics import confusion_matrix, accuracy_score
 
 from nltk.translate.bleu_score import sentence_bleu
 
+from utils_.functions import *
+
 ## CONST #################
 CLASSES = ['sender', 'receiver']
 
 image_url = ''  
 
-## MODELS #############
+## MODELS ###############
 def plot_confusion_matrix(y_pred, y_true, classes):
     cm = confusion_matrix(y_pred, y_true,normalize='true')
     fig, ax = plt.subplots(figsize=(10,10))
@@ -62,16 +66,34 @@ def plot_confusion_matrix(y_pred, y_true, classes):
     
     plt.title('Confusion matrix')
     plt.show()
+
+def label_localization(img_path, cfg_save_path = "./models/OD_cfg.pickle"):
+    with open(cfg_save_path, 'rb') as f:
+        cfg = pickle.load(f)
+    cfg.MODEL.DEVICE = 'cuda:0'
+    cfg.MODEL.WEIGHTS = os.path.join("./models/", "label_localization.pth")
+    cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.5
+    cfg.MODEL.MASK_ON = False
+    cfg.SOLVER.CHECKPOINT_PERIOD = 1000
     
-def yolo(url):
-    im = np.array(Image.open(BytesIO(requests.get(url).content)).convert("L"))
+    predictor = DefaultPredictor(cfg)
+
+    return on_image(img_path, predictor)
+
+def yolo(url=None, img=None):
+    if url is None:
+        if img is None:
+            raise Exception("url or img are needed")
+        im = img
+    else:
+        im = np.array(Image.open(BytesIO(requests.get(url).content)).convert("L"))
     
-    model_label_detection = torch.hub.load("yolov5/", "custom", path="./best-yolov5x6.pt", source="local", device="cuda:1", verbose=False)
-    model_label_detection.conf = .5
+    model_label_detection = torch.hub.load("yolov5/", "custom", path="./models/best-yolov5x6.pt", source="local", device="cuda:1", verbose=False)
+    model_label_detection.conf = .1
     model_label_detection.iou = .5
     model_label_detection.augment = .5
     
-    im_with_bboxes = model_label_detection(im.copy())
+    im_with_bboxes = model_label_detection(im)
     return im_with_bboxes
 
 def OCR(im: np.ndarray, scale: int = 0):
@@ -233,36 +255,41 @@ def addr_classification(texts):
     out = model_clf.predict({'input_addr_1': addr_a, 'input_addr_2': addr_b})
     return out
 
-def all(url):
-    im_with_bboxes = yolo(url)
-
-    bboxes = im_with_bboxes.crop(save=False, )
-    bboxes = [np.array(bboxes[i]["im"]) for i in range(len(bboxes))]
+def all(img_path):
+    out_lst = []
+    all_txt = []
     
-    all_texts, all_boxes = [], []
-    for id, b in enumerate(bboxes):
-        text, box = OCR(b, scale=1)
+    res = label_localization(img_path)
+    bboxes = get_bboxes_from(res, [0])
+    cropped_bboxes = [crop(bbox, img_path) for bbox in bboxes]
 
-        text = " ".join(" ".join(text["text"]).splitlines()).lower()
-
-        all_texts.append(text)
-        all_boxes.append(box) 
+    yolo_bboxes = yolo(img=cropped_bboxes)
+    
+    for od_bbox in yolo_bboxes.crop(save=False, ):
+        im = od_bbox['im']
         
-    out = addr_identification(all_texts, mode='token')
+        text, box = OCR(im, scale=1)
+        text = " ".join(" ".join(text["text"]).splitlines()).lower()
+        text = re.sub(r' +',' ', text)
+        
+        if len(text) > 5:
+            all_txt.append(text)
+        
+    out = addr_identification(all_txt, mode='token')
     out = np.array(out)
-
+    
     addr_idx = [ idx for idx, _ in sorted(enumerate(out[:,0]), key=lambda x: x[1])[-2:]]
 
-    all_texts_new, all_boxes_new, all_decoded_addr, all_bboxes_new = [], [], [], []
+    addr_lst = []
     for i in addr_idx:
-        all_boxes_new.append(all_boxes[i])
-        all_bboxes_new.append(bboxes[i])
-        all_decoded_addr.append(all_texts[i])
+        addr_lst.append(all_txt[i])
 
-    out = addr_classification(all_decoded_addr)
-
+    out_lst.append(addr_classification(addr_lst))
+        
+    return all_txt, out_lst
+    
 ## TEST ###################
-def addr_clf_test(test_file = './utils/generated_clf.csv', sep = ';', verbose=False):
+def addr_clf_test(test_file = './utils_/generated_clf.csv', sep = ';', verbose=False):
     df = pd.read_csv(test_file, sep, encoding='utf-8')
     
     X = np.array(df.drop(['width', 'height'], 1))
@@ -291,7 +318,7 @@ def addr_clf_test(test_file = './utils/generated_clf.csv', sep = ';', verbose=Fa
     
     return acc_a, acc_b
 
-def addr_ident_test(test_file = './utils/generated.csv', sep = ';', mode='mean', confusion_matrix=True, verbose=True, iter=None):
+def addr_ident_test(test_file = './utils_/generated.csv', sep = ';', mode='mean', confusion_matrix=True, verbose=True, iter=None):
     df = pd.read_csv(test_file, sep, encoding='utf-8')
     df.label = df.label.map({'address':0,'code':1,'contact':2,'other':3})
 
@@ -322,7 +349,7 @@ def addr_ident_test(test_file = './utils/generated.csv', sep = ';', mode='mean',
         
     return acc
 
-def ocr_test(test_dir = './utils/data-examples/ocr/', json_file = 'references.json', verbose=True):
+def ocr_test(test_dir = './utils_/data-examples/ocr/', json_file = 'references.json', verbose=True):
     with open(os.path.join(test_dir, json_file), 'rb') as fp:
         dict = json.loads(fp.read())
         files = os.scandir(test_dir)
@@ -360,10 +387,13 @@ def ocr_test(test_dir = './utils/data-examples/ocr/', json_file = 'references.js
         return np.mean(bleu_scores)
 
 ## MAIN ###################
-def main():
-    return 0
 
+def main():
+    img_path = './utils_/data-examples/label_localization/2.jpg'
+    out = all(img_path)
+    print('\n')
+    print(out[0])
+    print(out[1])
+    
 if __name__ == '__main__':
     main()
-
-
