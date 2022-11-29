@@ -95,7 +95,7 @@ def add_bruit(sentence):
 
     return sentence_c
 
-with open('./street_name.txt', 'r', encoding='UTF-8') as f:
+with open('./utils_/street_name.txt', 'r', encoding='UTF-8') as f:
     output_f = open('./generated.csv', 'w', encoding='UTF-8')
     output_f.write(f"label;text\n")
     for i in iter(f.readlines()):
