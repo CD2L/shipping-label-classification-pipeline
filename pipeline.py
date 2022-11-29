@@ -1,9 +1,13 @@
 ## IMPORT ################
-from PIL import Image
-import requests
-from io import BytesIO
-import numpy as np
 import re
+from io import BytesIO
+import requests
+import numpy as np
+
+from tensorflow.keras.preprocessing.text import Tokenizer
+from tensorflow.keras.preprocessing import sequence
+from tensorflow.keras.utils import to_categorical
+from tensorflow.keras.models import load_model
 
 import torch
 
@@ -13,14 +17,6 @@ from pytesseract import pytesseract as pt
 from pytesseract import Output
 
 from silence_tensorflow import silence_tensorflow
-silence_tensorflow()
-
-import tensorflow as tf  
-from tensorflow.keras.preprocessing.text import Tokenizer
-from tensorflow.keras.preprocessing import sequence
-from tensorflow.keras.utils import to_categorical
-from tensorflow.keras.models import load_model
-
 from detectron2.engine import DefaultPredictor
 
 from gensim.models import KeyedVectors
@@ -42,9 +38,11 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix, accuracy_score
 
 from nltk.translate.bleu_score import sentence_bleu
+from PIL import Image
 
 from utils_.functions import *
 
+silence_tensorflow()
 ## CONST #################
 CLASSES = ['sender', 'receiver']
 
