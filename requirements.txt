@@ -6,3 +6,9 @@ opencv-python
 streamlit
 faker
 pillow
+transformers
+gensim
+scikit-learn
+pytesseract
+silence-tensorflow
+nltk
