@@ -4,5 +4,5 @@ torch
 tensorflow
 opencv-python
 streamlit
-PIL
 faker
+pillow
