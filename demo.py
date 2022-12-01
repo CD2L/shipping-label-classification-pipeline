@@ -35,10 +35,10 @@ import warnings
 warnings.filterwarnings("ignore")
 
 
-
-
 st.set_page_config(
-    page_title="Demo", layout="wide", initial_sidebar_state="expanded",
+    page_title="Demo",
+    layout="wide",
+    initial_sidebar_state="expanded",
 )
 
 
@@ -65,7 +65,7 @@ st.title("PoC Demo")
 # st.write(
 #     """
 #     This project aims to use deep learning algorithms to detect whether a product is counterfeit by analyzing images of the box and its labels.
-    
+
 #     This repository is PoC Demo using web scraped images, realized during sprints, of how the pipeline actually works. Here is an overview of the pipeline:
 
 #     Github repository: [https://github.com/CD2L/shipping-label-classification-pipeline](https://github.com/CD2L/shipping-label-classification-pipeline).
@@ -86,7 +86,7 @@ im = np.array(Image.open(BytesIO(requests.get(url).content)))
 CLASSES = ["sender", "receiver", "unknown"]
 
 model_clf = load_model("./models/03_addr_clf.h5")
-#model_ident = load_model("./models/glove_embedding_identification.h5")
+# model_ident = load_model("./models/glove_embedding_identification.h5")
 model_ident_tokenization = load_model("./models/15_addr_identification.h5")
 
 
@@ -142,18 +142,20 @@ def preprocessing(X, y=None, max_words_c=200):
     X_c = sequence.pad_sequences(X_c, maxlen=max_words_c, padding="post")
     return X_c
 
+
 from gensim.models import KeyedVectors
 
+
 def vectorization(df):
-    glove_model = KeyedVectors.load('./models/model.glove')
-    translator = str.maketrans(string.punctuation, ' '*len(string.punctuation))
+    glove_model = KeyedVectors.load("./models/model.glove")
+    translator = str.maketrans(string.punctuation, " " * len(string.punctuation))
 
     X = np.zeros((len(df), 200, 300))
     n = 0
 
     for sentence in df:
         tmp_sentence = sentence.lower().translate(translator)
-        sentence = tmp_sentence.replace('\n', '')
+        sentence = tmp_sentence.replace("\n", "")
         tokens = sentence.split()
         vecs = np.zeros((200, 300))
         m = 0
@@ -170,34 +172,35 @@ def vectorization(df):
 
     return X
 
-def preprocessing_ident_tokenization(X,y = None,max_words_c = 200, max_words_w = 100):
-    with open('./models/tokenizer_ident.pickle', 'rb') as handle:
+
+def preprocessing_ident_tokenization(X, y=None, max_words_c=200, max_words_w=100):
+    with open("./models/tokenizer_ident.pickle", "rb") as handle:
         tokenizer = pickle.load(handle)
 
     str_to_replace = ',;:!?./§&~"#([-|`_\\^@)]=}²<>%$£¤*+'
 
-    translator = str.maketrans(string.punctuation, ' '*len(string.punctuation))
-    translator2 = str.maketrans(str_to_replace, ' '*len(str_to_replace)) 
+    translator = str.maketrans(string.punctuation, " " * len(string.punctuation))
+    translator2 = str.maketrans(str_to_replace, " " * len(str_to_replace))
 
     X_ = []
     for i, sentence in enumerate(X):
         tmp_sentence = sentence.lower()
-        tmp_sentence = tmp_sentence.replace('\n', '')
+        tmp_sentence = tmp_sentence.replace("\n", "")
         tmp_sentence = tmp_sentence.translate(translator)
         tmp_sentence = tmp_sentence.translate(translator2)
-        
-        tmp_sentence = re.sub(r"\d{6,}", "$" , tmp_sentence)
-        tmp_sentence = re.sub(r"\d{4,6}", "####" , tmp_sentence)
-        tmp_sentence = re.sub(r"\d{3,4}", "###" , tmp_sentence)
-        tmp_sentence = re.sub(r"\d{2,3}", "##" , tmp_sentence)
-        tmp_sentence = re.sub(r"\d", "#" , tmp_sentence)
-        tmp_sentence = re.sub(r"(\b\S+\b)", r"@\1" , tmp_sentence)
-        tmp_sentence = re.sub(r' ', '', tmp_sentence)
+
+        tmp_sentence = re.sub(r"\d{6,}", "$", tmp_sentence)
+        tmp_sentence = re.sub(r"\d{4,6}", "####", tmp_sentence)
+        tmp_sentence = re.sub(r"\d{3,4}", "###", tmp_sentence)
+        tmp_sentence = re.sub(r"\d{2,3}", "##", tmp_sentence)
+        tmp_sentence = re.sub(r"\d", "#", tmp_sentence)
+        tmp_sentence = re.sub(r"(\b\S+\b)", r"@\1", tmp_sentence)
+        tmp_sentence = re.sub(r" ", "", tmp_sentence)
         X_.append(tmp_sentence)
     X = X_.copy()
 
     X_clvl = tokenizer.texts_to_sequences(X)
-    X_clvl = sequence.pad_sequences(X_clvl, maxlen=max_words_c, padding='post')
+    X_clvl = sequence.pad_sequences(X_clvl, maxlen=max_words_c, padding="post")
 
     return X_clvl
 
@@ -248,7 +251,7 @@ def preprocessing_ident_tokenization(X,y = None,max_words_c = 200, max_words_w =
 
 #     boxes = [np.array(pred[i]["im"]) for i in range(len(pred))]
 #     labels = [pred[i]["label"] for i in range(len(pred))]
-    
+
 #     st.write("### Count occurrences of ADR labels.")
 
 #     x = [f.split(" ")[0] for f in labels]
@@ -294,10 +297,12 @@ def preprocessing_ident_tokenization(X,y = None,max_words_c = 200, max_words_w =
 
 model_label_detection = torch.hub.load(
     # "yolov5/", "custom", path="./models/00_label_detection.pt", source="local"
-    "yolov5/", "custom", path="./models/bestbest.pt", source="local", force_reload=True
-).to(
-    torch.device("cuda")
-)
+    "yolov5/",
+    "custom",
+    path="./models/bestbest.pt",
+    source="local",
+    force_reload=True,
+).to(torch.device("cuda"))
 
 
 with st.sidebar:
@@ -307,7 +312,7 @@ with st.sidebar:
         max_value=1.0,
         value=0.1,
         step=0.05,
-    )   
+    )
     model_label_detection.iou = st.slider(
         label="Overlap Threshold:", min_value=0.0, max_value=1.0, value=0.5, step=0.05
     )
@@ -348,10 +353,10 @@ for id, b in enumerate(bboxes):
 with open("./models/tokenizer_addr_identification.pickle", "rb") as handle:
     tokenizer = pickle.load(handle)
 
-#vectorized_data = vectorization(all_texts)
+# vectorized_data = vectorization(all_texts)
 tokenized_data = preprocessing_ident_tokenization(all_texts)
 st.write(tokenized_data)
-#out1 = model_ident.predict(vectorized_data)
+# out1 = model_ident.predict(vectorized_data)
 out2 = model_ident_tokenization.predict(tokenized_data)
 
 out = out2
@@ -397,7 +402,7 @@ for id, b in enumerate(all_bboxes_new):
 
     cols[0].image(b)
     cols[1].image(all_boxes_new[id])
-    cols[2].write(all_decoded_addr[id]) 
+    cols[2].write(all_decoded_addr[id])
 
     # st.write(X)
     # st.write(type(X))
