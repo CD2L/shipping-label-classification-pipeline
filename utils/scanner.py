@@ -1,10 +1,13 @@
 import numpy as np
+
 import cv2
 
-from .processor import *
 import matplotlib.pyplot as plt
 
-class Extractor():
+from .processor import *
+
+
+class Extractor:
     def __init__(self) -> None:
         self.preprocess = [
             Binarize(),
@@ -14,7 +17,7 @@ class Extractor():
 
         self.detect = Detect()
         self.out_hist = []
-    
+
     def __call__(self, im):
         im = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY) if len(im.shape) > 2 else im
         self.out_hist.append(im)
@@ -24,13 +27,11 @@ class Extractor():
         for op in self.preprocess:
             out = op(out)
             self.out_hist.append(out)
-        
-        # OPS TO DETECT THE TARGET 
+
+        # OPS TO DETECT THE TARGET
         lines, intersections, points = self.detect(out)
         x = im.copy()
         x = self.extract(x, intersections)
-
-
 
         # VISUALIZATION
         dl = self.detect.draw_lines(im, lines)
@@ -42,19 +43,22 @@ class Extractor():
         # x = cv2.equalizeHist(x)
         # x = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8)).apply(x)
 
-        # x = Binarize(100, 255, cv2.THRESH_BINARY)(x)
+        # k, s, r = .2, 1, 128
+        # T = (1-k*(1-s/r)) * (x.max() + x.mean())/2
+
+        # x = Binarize(T, 255, cv2.THRESH_BINARY)(x)
         self.out_hist.append(x)
 
         return self.out_hist
 
     def order_points(self, pts):
-        rect = np.zeros((4, 2), dtype = "float32")
+        rect = np.zeros((4, 2), dtype="float32")
 
-        s = pts.sum(axis = 1)
+        s = pts.sum(axis=1)
         rect[0] = pts[np.argmin(s)]
         rect[2] = pts[np.argmax(s)]
-        
-        diff = np.diff(pts, axis = 1)
+
+        diff = np.diff(pts, axis=1)
         rect[1] = pts[np.argmin(diff)]
         rect[3] = pts[np.argmax(diff)]
         return rect
@@ -62,11 +66,7 @@ class Extractor():
     def extract(self, im, inters):
         imc = im.astype("uint8").copy()
 
-        pts = np.array([
-            (x, y)
-            for intersection in inters
-            for x, y in intersection
-        ])
+        pts = np.array([(x, y) for intersection in inters for x, y in intersection])
         rect = self.order_points(pts)
         (tl, tr, br, bl) = rect
 
@@ -78,24 +78,26 @@ class Extractor():
         heightB = np.sqrt(((tl[0] - bl[0]) ** 2) + ((tl[1] - bl[1]) ** 2))
         maxHeight = max(int(heightA), int(heightB))
 
-        dst = np.array([
-                [0, 0],                         
-                [maxWidth - 1, 0],              
-                [maxWidth - 1, maxHeight - 1],  
-                [0, maxHeight - 1]
-            ], dtype = "float32")            
+        dst = np.array(
+            [
+                [0, 0],
+                [maxWidth - 1, 0],
+                [maxWidth - 1, maxHeight - 1],
+                [0, maxHeight - 1],
+            ],
+            dtype="float32",
+        )
 
         warped = cv2.warpPerspective(
-                imc,
-                cv2.getPerspectiveTransform(rect, dst),
-                (maxWidth, maxHeight))
+            imc, cv2.getPerspectiveTransform(rect, dst), (maxWidth, maxHeight)
+        )
 
         return warped
 
     def plot(self, *im, title=None, save=None, cmap="gray"):
         plt.figure(dpi=600)
         plt.axis("off")
-        
+
         im = np.concatenate(im, axis=1)
         plt.imshow(im, interpolation="nearest", cmap=cmap)
 
