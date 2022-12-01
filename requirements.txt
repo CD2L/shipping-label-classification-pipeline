@@ -4,5 +4,11 @@ torch
 tensorflow
 opencv-python
 streamlit
-PIL
 faker
+pillow
+transformers
+gensim
+scikit-learn
+pytesseract
+silence-tensorflow
+nltk
