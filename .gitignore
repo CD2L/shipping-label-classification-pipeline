@@ -10,3 +10,6 @@ outputs/
 /.data
 .vscode
 /weights
+/static
+/*jpg
+/demo/upload/*

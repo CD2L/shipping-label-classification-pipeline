@@ -103,10 +103,9 @@ class ObjectDetectionModel(AbstractModel):
         self.model.conf = conf
         self.model.iou = iou
         self.model.augment = augment
-        super.__init__()
 
     def predict(self, img):
-        return self.model(self._img2array(img))
+        return self.model(self._img2array(img.copy()))
 
 class AddrIdentificationModel(AbstractModel):
     '''Address identification model'''

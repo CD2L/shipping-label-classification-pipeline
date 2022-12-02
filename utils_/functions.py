@@ -79,12 +79,12 @@ def get_bboxes_from(outputs, classes = []):
     return outputs["instances"].__dict__['_fields']['pred_boxes'].__dict__['tensor'][idx_lst]
 
 
-def crop(bbox, in_img: str):
+def crop(bbox, in_img: str, margin=0):
     img = np.array(cv2.imread(in_img, cv2.COLOR_RGB2GRAY))
     """ bbox is a list with xmin, ymin, xmax, ymax """
     xmin, ymin, xmax, ymax = bbox
     
-    cropped_im = img[int(ymin):int(ymax),int(xmin):int(xmax)]
+    cropped_im = img[int(ymin)-margin:int(ymax)+margin,int(xmin)-margin:int(xmax)+margin]
     return cropped_im
 
 def plot_confusion_matrix(y_pred, y_true, classes):

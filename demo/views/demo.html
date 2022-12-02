@@ -1,0 +1,163 @@
+<head>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet"> 
+    <!-- CSS only -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-rbsA2VBKQhggwzxH7pPCaAqO46MgnOM80zW1RWuH61DGLwZJEdK2Kadq2F9CUG65" crossorigin="anonymous">
+
+</head>
+
+<style>
+    body {
+        font-family: 'Roboto', sans-serif;
+        background-color: rgb(48, 48, 48);
+        color: black;
+    }
+    .ll img {
+        width: 200px;
+    }
+    .yolo img, .redress img {
+        width: 200px;
+    }
+    body>div{
+        margin-bottom: 20px;
+    }
+    .ocr .img{
+        display: inline;
+    }
+    .ocr .img>div {
+        position: relative;
+    }
+    .card {
+        min-width: 90%;
+        padding: auto;
+        margin: 50px auto;   
+    }
+    .home-btn{
+        width: 18rem;
+        margin: 50px auto;
+    }
+</style>
+<body>
+    
+<div class="container-lg">
+    <form action="/"> 
+    <div class="row">
+        <button type="submit" class="btn btn-primary home-btn">Another image?</button>
+    </div>
+    </form>
+    <div class="ll card" style="width: 18rem;">
+        <div class="card-body">
+        <h5 class="card-title">Label Localization</h5>
+        <div class="row">
+            <div class="col">
+                <img src="{{url_for('static', filename='ll_result.jpg')}}"/>
+            </div>
+            {% for img in ll_dir %}
+            <div class="col">
+                <img src="{{url_for('static', filename='ll')}}/{{img}}"/>
+            </div>
+            {% endfor %}    
+        </div>
+        </div>
+    </div>
+    <div class="redress card" style="width: 18rem;">
+        <div class="card-body">
+            <h5 class="card-title">Redressement</h5>
+            <div class="row">
+                {% for img in redress_dir %}
+                <div class="col img">
+                    <img src="{{url_for('static', filename='redress')}}/{{img}}"/>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    <div class="yolo card" style="width: 18rem;">
+        <div class="card-body">
+            <h5 class="card-title">Yolov5</h5>
+            <div class="row">
+                {% for img in yolo_dir %}
+                <div class="col">
+                    <img src="{{url_for('static', filename='ocr')}}/{{img}}"/>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="ocr card" style="width: 18rem;">
+        <div class="card-body">
+        <h5 class="card-title">OCR</h5>
+        <div class="row">
+            <div class="col">
+                <span class="badge rounded-pill text-bg-danger mb-2">Number of blocks : {{ocr_dir|length}}</span>
+            </div>
+        </div>
+        <table class="table">
+            <thead>
+              <tr>
+                <th scope="col">id</th>
+                <th scope="col">Text</th>
+            </tr>
+            </thead>
+            <tbody>
+                {% for txt in all_txt %}
+                <tr>
+                    <td>{{loop.index}}</td>
+                    <td>{{txt}}</td>
+                </tr>
+                {% endfor %}    
+            </tbody>
+        </table>
+    </div>
+    </div>
+    <div class="addr_idt card" style="width: 18rem;">
+        <div class="card-body">
+            <table class="table">
+                <thead>
+                  <tr>
+                    <th scope="col">id</th>
+                    <th scope="col">Text</th>
+                </tr>
+                </thead>
+                <tbody>
+                    {% for txt in addr_lst %}
+                    <tr>
+                        <td>{{loop.index}}</td>
+                        <td>{{txt}}</td>
+                    </tr>
+                    {% endfor %}    
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="addr_clf card" style="width: 18rem;">
+        <div class="card-body">
+        <h5 class="card-title">Addr clf</h5>
+        <table class="table">
+            <thead>
+              <tr>
+                <th scope="col">id</th>
+                <th scope="col">Text</th>
+                <th scope="col">Shipper</th>
+                <th scope="col">Receiver</th>
+            </tr>
+            </thead>
+            <tbody>
+                {% for txt,     result in out %}
+                <tr>
+                    <td>{{loop.index}}</td>
+                    <td>{{txt}}</td>
+                    {% for c in result %}
+                        {% for p in c %}
+                        <td>{{p}}</td>
+                        {% endfor %}
+                    {% endfor %}
+                </tr>
+                {% endfor %}    
+            </tbody>
+        </table>    
+    </div>
+</div>
+</body>
