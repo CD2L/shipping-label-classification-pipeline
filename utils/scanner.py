@@ -1,17 +1,41 @@
 import numpy as np
-
 import cv2
-
-import matplotlib.pyplot as plt
-
+from pyzbar.pyzbar import decode
 from .processor import *
 
+class BarcodeReader():
+    def __init__(self) -> None:
+        self.extract = Extractor()
+        self.out = []
 
-class Extractor:
+    def get_barcodes(self, im):
+        im = self.extract(im)
+        bardet = decode(im)
+        
+        for x in bardet:
+            data = x.data.decode("UTF-8")
+            if data[0] == "%":
+                self.out.append({
+                    "content": data,
+                    "destination_postal_code": data[1:8],
+                    "tracking_number": {
+                        "id": data[8:22],
+                        "origin_location": data[8:12],
+                        "origin_parcel_number": data[12:22],
+                    },
+                    "service_code": data[22:25],
+                    "destination_country_code": data[25:],
+                })
+            else:
+                self.out.append(data)
+
+        return self.out
+
+class Extractor(Plot):
     def __init__(self) -> None:
         self.preprocess = [
             Binarize(),
-            MorphologicalTransformation(),
+            MorphologicalTransformation(mode="extract"),
             Sobel(),
         ]
 
@@ -36,20 +60,12 @@ class Extractor:
         # VISUALIZATION
         dl = self.detect.draw_lines(im, lines)
         dp = self.detect.draw_points(im, points)
+
         self.out_hist.append(dl)
         self.out_hist.append(dp)
-
-        # POST-PROCESSING
-        # x = cv2.equalizeHist(x)
-        # x = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8)).apply(x)
-
-        # k, s, r = .2, 1, 128
-        # T = (1-k*(1-s/r)) * (x.max() + x.mean())/2
-
-        # x = Binarize(T, 255, cv2.THRESH_BINARY)(x)
         self.out_hist.append(x)
 
-        return self.out_hist
+        return x
 
     def order_points(self, pts):
         rect = np.zeros((4, 2), dtype="float32")
@@ -93,16 +109,3 @@ class Extractor:
         )
 
         return warped
-
-    def plot(self, *im, title=None, save=None, cmap="gray"):
-        plt.figure(dpi=600)
-        plt.axis("off")
-
-        im = np.concatenate(im, axis=1)
-        plt.imshow(im, interpolation="nearest", cmap=cmap)
-
-        if title is not None:
-            plt.title(title)
-        if save is not None:
-            output_path = save + ".jpg"
-            plt.savefig(output_path, bbox_inches="tight")

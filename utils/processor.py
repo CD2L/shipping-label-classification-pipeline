@@ -4,6 +4,32 @@ import numpy as np
 from itertools import combinations
 from sklearn.cluster import KMeans
 
+import imutils
+import matplotlib.pyplot as plt
+
+class Plot:
+    def plot(im, title=None, save=None, cmap="gray"):
+        plt.figure(dpi=600)
+        plt.axis("off")
+
+        im = np.concatenate(im, axis=1)
+        plt.imshow(im, interpolation="nearest", cmap=cmap)
+
+        if title is not None:
+            plt.title(title)
+        if save is not None:
+            output_path = save + ".jpg"
+            plt.savefig(output_path, bbox_inches="tight")
+
+class Blur:
+    def __init__(
+        self, ksize=(9,9)
+    ):
+        self.ksize = ksize
+
+    def __call__(self, im):
+        return cv2.blur(im, self.ksize)
+        
 
 class Binarize:
     def __init__(
@@ -21,38 +47,70 @@ class Binarize:
             self.mode,
         )[1]
 
-
 class MorphologicalTransformation:
-    def __init__(self, niter=22):
+    def __init__(self, shape=cv2.MORPH_ELLIPSE, ksize=(3,3), niter=22, mode="barcode"):
+        self.shape = shape
         self.niter = niter
+        self.ksize = ksize
+        self.mode = mode
 
     def __call__(self, im):
-        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
-        return cv2.morphologyEx(im, cv2.MORPH_CLOSE, kernel, iterations=self.niter)
+        kernel = cv2.getStructuringElement(self.shape, self.ksize)
+        out =  cv2.morphologyEx(im, cv2.MORPH_CLOSE, kernel, iterations=self.niter)
 
+        if self.mode.lower() == "barcode":
+            out = cv2.erode(out, None, iterations=4)
+            out = cv2.dilate(out, None, iterations=4)
 
+        return out
 class Sobel:
-    def __init__(self, thresh=100):
+    def __init__(self, ddepth=cv2.CV_16S, ksize=3, thresh=100):
+        self.ddepth = ddepth
+        self.ksize = ksize
         self.thresh = thresh
 
+        self.ddepth = cv2.cv.CV_32F if imutils.is_cv2() else cv2.CV_32F
+        # self.ddepth = ddepth
+
     def __call__(self, im):
-        gradx = cv2.convertScaleAbs(cv2.Sobel(im, cv2.CV_16S, dx=1, dy=0, ksize=3))
-        grady = cv2.convertScaleAbs(cv2.Sobel(im, cv2.CV_16S, dx=0, dy=1, ksize=3))
+        gradx = cv2.Sobel(im, self.ddepth, dx=1, dy=0, ksize=self.ksize)
+        grady = cv2.Sobel(im, self.ddepth, dx=0, dy=1, ksize=self.ksize)
 
-        grad = cv2.addWeighted(gradx, 0.5, grady, 0.5, 0)
+        if self.thresh is not None:
+            gradx = cv2.convertScaleAbs(gradx)
+            grady = cv2.convertScaleAbs(grady)
+            out = cv2.addWeighted(gradx, 0.5, grady, 0.5, 0)
+            out = np.where(out > self.thresh, 255, 0)
+        else:
+            out = cv2.subtract(gradx, grady)
+            out = cv2.convertScaleAbs(out)    
 
-        return np.where(grad > self.thresh, 255, 0)
+        return out
 
 
-class Detect:
-    def __init__(self, rho=1, theta=np.pi / 180, thresh=100):
+class Hough:
+    def __init__(self, rho=1, theta=np.pi / 180, thresh=100) -> None:
         self.rho = rho
         self.theta = theta
         self.thresh = thresh
 
     def __call__(self, im):
         imc = im.astype("uint8").copy()
-        lines = cv2.HoughLines(imc, self.rho, self.theta, self.thresh)
+        return cv2.HoughLines(
+            imc,
+            self.rho,
+            self.theta,
+            self.thresh
+        )
+        
+
+class Detect:
+    def __init__(self):
+        self.hough = Hough()
+
+    def __call__(self, im):
+        imc = im.astype("uint8").copy()
+        lines = self.hough(im)
         intersections = self.get_intersections(imc, lines)
         points = self.find_quadrilaterals(intersections)
 
@@ -84,6 +142,7 @@ class Detect:
         pairs = combinations(range(len(lines)), 2)
         x_in_range = lambda x: 0 <= x <= im.shape[1]
         y_in_range = lambda y: 0 <= y <= im.shape[0]
+
 
         for i, j in pairs:
             line_i, line_j = lines[i][0], lines[j][0]
