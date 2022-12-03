@@ -1,4 +1,6 @@
 from utils.scanner import Extractor
+from utils.barcode import BarcodeDetector
+
 import matplotlib.pyplot as plt
 
 import cv2
@@ -14,8 +16,6 @@ parser.add_argument("--image", type=str)
 args = parser.parse_args()
 filename = args.image
 
-
-# FOR TESTING
 
 im = cv2.imread(filename)
 
@@ -43,6 +43,5 @@ ax[1].axis("off")
 
 fig.savefig(f"xxx_viz_out.jpg")
 
-# x = hist[-1]
-# print(x.shape)
-
+x = hist[-1]
+print(x.shape)
