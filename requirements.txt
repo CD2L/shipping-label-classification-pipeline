@@ -12,3 +12,4 @@ scikit-learn
 pytesseract
 silence-tensorflow
 nltk
+pyzbar
