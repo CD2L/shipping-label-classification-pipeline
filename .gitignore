@@ -5,3 +5,10 @@ generated*
 utils/data-examples/ocr/*(png|jpeg|jpg|gif)
 __pycache__/
 .ipynb_checkpoints
+outputs/
+/.data
+.vscode
+/weights
+logo2k_dataset/
+logo_dataset/
+checkpoints/
