@@ -98,8 +98,8 @@ class LabelLocalizationModel(AbstractModel):
 class ObjectDetectionModel(AbstractModel):
     '''Object detection model'''
     model = None
-    def __init__(self, model_path, conf=0.5, iou=0.5, augment=0.5) -> None:
-        self.model = torch.hub.load("yolov5/", "custom", path=model_path, source="local", device="cuda:1", verbose=False)
+    def __init__(self, model_path, yolo_path = 'yolov5/', conf=0.5, iou=0.5, augment=0.5) -> None:
+        self.model = torch.hub.load(yolo_path, "custom", path=model_path, source="local", device="cuda:1", verbose=False)
         self.model.conf = conf
         self.model.iou = iou
         self.model.augment = augment
