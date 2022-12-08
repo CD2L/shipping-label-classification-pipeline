@@ -34,7 +34,9 @@ from sklearn.metrics import accuracy_score
 from nltk.translate.bleu_score import sentence_bleu
 from PIL import Image
 
-from utils_.functions import crop, rotate_image, get_bboxes_from, plot_confusion_matrix
+from .utils_.functions import crop, rotate_image, get_bboxes_from, plot_confusion_matrix
+
+import easyocr
 
 silence_tensorflow()
 ## CONST #################
@@ -67,7 +69,7 @@ class LabelLocalizationModel(AbstractModel):
     def __init__(self,model_weight_path,cfg_path, mask=False) -> None:
         with open(cfg_path, 'rb') as f:
             self.cfg = pickle.load(f)
-        self.cfg.MODEL.DEVICE = 'cuda:0'
+        self.cfg.MODEL.DEVICE = 'cuda'
         self.cfg.MODEL.WEIGHTS = model_weight_path
         self.cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.5
         self.cfg.MODEL.MASK_ON = mask
@@ -98,15 +100,14 @@ class LabelLocalizationModel(AbstractModel):
 class ObjectDetectionModel(AbstractModel):
     '''Object detection model'''
     model = None
-    def __init__(self, model_path, conf=0.5, iou=0.5, augment=0.5) -> None:
-        self.model = torch.hub.load("yolov5/", "custom", path=model_path, source="local", device="cuda:1", verbose=False)
+    def __init__(self, model_path, yolo_path = 'yolov5/', conf=0.5, iou=0.5, augment=0.5) -> None:
+        self.model = torch.hub.load(yolo_path, "custom", path=model_path, source="local", device="cuda:1", verbose=False)
         self.model.conf = conf
         self.model.iou = iou
         self.model.augment = augment
-        super.__init__()
 
     def predict(self, img):
-        return self.model(self._img2array(img))
+        return self.model(self._img2array(img.copy()))
 
 class AddrIdentificationModel(AbstractModel):
     '''Address identification model'''
@@ -372,6 +373,71 @@ class OCR(AbstractModel):
     def predict(self, image, config="-l eng --oem 3 --psm 3"):
         return pt.image_to_data(image, output_type=Output.DICT, config=config)
 
+class easyOCR(AbstractModel):
+    def __init__(self, lang_list=['en'], gpu=True) -> None:
+        self.model = easyocr.Reader(lang_list, gpu)
+        
+    def test(self, json_file, verbose=False):
+        with open(json_file, 'rb') as fp:
+            dict = json.loads(fp.read())
+            files = os.scandir(dict['images_path'])
+
+            bleu_scores = []
+            start = time.time()
+            for idx, file in enumerate(files):
+                if file.name.endswith((".png", ".jpeg", ".jpg")):
+                    references_raw = dict['images'][file.name]
+                    references = []
+                    for ref in references_raw:
+                        ref = re.sub(rf'[{string.punctuation}]', ' ', ref)
+                        ref = re.sub(r' +', ' ', ref)
+                        references.append(ref.split())
+
+                    img = np.array(Image.open(file.path))
+                    res = self.predict(
+                        image=img, 
+                        low_text=0.5,
+                        threshold=0.5,
+                        min_size=5,
+                        mag_ratio=3,
+                        paragraph=True,
+                        detail=1,
+                        bbox_min_size=1,
+                        contrast_ths=0.3,
+                        adjust_contrast=0.5,
+                        rotation_info=[180]
+                    )
+
+                    sentence = ' '.join(res['text'])
+                    sentence = sentence.lower().strip()
+                    sentence = re.sub(rf'[{string.punctuation}]', ' ', sentence)
+                    sentence = re.sub(r' +', ' ', sentence)
+
+                    bleu_score = sentence_bleu(references, sentence.split(), weights=(0.5, 0.3, 0.2, 0))
+                    bleu_scores.append(bleu_score)
+
+                    if verbose:
+                        print(idx, ':', bleu_score)
+                        print(' '.join(references[0]))
+                        print(sentence)
+                        print("--------------------")
+            end = time.time()
+            bleu_scores = np.array(bleu_scores)
+            if verbose:
+                print(np.mean(bleu_scores))
+
+            return np.mean(bleu_scores), (end-start)*1000, len(dict['images'])
+
+    def predict(self, **kwargs):
+        recognized_txts = self.model.readtext(**kwargs)
+        txts = []
+        for i in range(len(recognized_txts)):
+            txts.append(recognized_txts[i][1])
+            
+        out = " ".join(np.asarray(txts))
+        return out
+        
+    
 def all(img_path):
     ll_model = LabelLocalizationModel("./models/label_localization.pth","./models/OD_cfg.pickle")
     yolo = ObjectDetectionModel("./models/best-yolov5x6.pt",0.2)

@@ -107,7 +107,7 @@ def add_bruit(word, chance=.1):
 
 def generate_text(type, keyword_presence = True):
     k = randint(0,len(label_text[type])-1)
-    line = random_line("./utils/street_name.init")
+    line = random_line("./utils_/street_name.init")
     if keyword_presence:
         txt_arr = line.split()
         txt_arr.insert(randint(0,len(txt_arr)-1), add_bruit(label_text[type][k],0.12))
@@ -121,7 +121,7 @@ if os.path.exists(output_folder+"generated_clf.csv"):
 
 with open(output_folder+"generated_clf.csv", "x", encoding="utf-8") as f:
     f.write(f"label;text;width;height\n")
-    for i in range(5000):
+    for i in range(500):
         size_s, size_r = generate_blocs_size()
 
         r = random()
