@@ -1,4 +1,4 @@
-from utils.scanner import Extractor
+from utils_.scanner import Extractor
 import matplotlib.pyplot as plt
 
 import cv2

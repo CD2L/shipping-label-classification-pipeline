@@ -11,5 +11,4 @@ outputs/
 .vscode
 /weights
 /static
-/*jpg
-/demo/upload/*
+*_dataset
