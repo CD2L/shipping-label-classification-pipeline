@@ -78,6 +78,23 @@ def get_bboxes_from(outputs, classes = []):
 
     return outputs["instances"].__dict__['_fields']['pred_boxes'].__dict__['tensor'][idx_lst]
 
+def get_masks_from(outputs, classes = []):
+    """ returns list of mask """
+    pred_classes = outputs['instances'].pred_classes
+
+    out = torch.isin(pred_classes, torch.tensor(classes, device='cuda:0'))
+
+    idx_lst = [] 
+    for idx, i in enumerate(out):
+        if i:
+            idx_lst.append(idx)
+
+    masks = outputs["instances"].__dict__['_fields']['pred_masks'][idx_lst].to('cpu').numpy()
+    scores = outputs["instances"].__dict__['_fields']['scores'][idx_lst].to('cpu').numpy()
+    cls = outputs["instances"].__dict__['_fields']['pred_classes'][idx_lst].to('cpu').numpy()
+
+    return masks, scores, cls
+
 
 def crop(bbox, in_img: str, margin=0):
     img = np.array(cv2.imread(in_img, cv2.COLOR_RGB2GRAY))
@@ -86,6 +103,20 @@ def crop(bbox, in_img: str, margin=0):
     
     cropped_im = img[int(ymin)-margin:int(ymax)+margin,int(xmin)-margin:int(xmax)+margin]
     return cropped_im
+
+def crop_mask(mask, in_img: str, margin=0):
+    img = np.array(cv2.imread(in_img, cv2.IMREAD_GRAYSCALE))
+    """ bbox is a list with xmin, ymin, xmax, ymax """
+    
+    mask = np.where(mask,255,0).astype('uint8')
+
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (margin,margin))
+    dilated_mask = cv2.dilate(mask,     kernel, iterations=3)
+
+    cropped_im = cv2.bitwise_and(dilated_mask,img)
+    cv2.imwrite('image_test.png',cropped_im)
+    return cropped_im
+
 
 def plot_confusion_matrix(y_pred, y_true, classes):
     '''Plotting a confusion matrix'''
