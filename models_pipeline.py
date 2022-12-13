@@ -34,7 +34,7 @@ from sklearn.metrics import accuracy_score
 from nltk.translate.bleu_score import sentence_bleu
 from PIL import Image
 
-from .utils_.functions import crop, rotate_image, get_bboxes_from, plot_confusion_matrix
+from utils_.functions import crop, rotate_image, get_bboxes_from, plot_confusion_matrix
 
 import easyocr
 
@@ -54,7 +54,7 @@ class AbstractModel():
             im = cv2.imread(img)
         return im
 
-    def test(self):
+    def test(self,*args, **kwargs):
         '''test abstract method for testing the performance of the model'''
         raise NotImplementedError("Subclass must implement abstract method")
     def predict(self):
@@ -377,50 +377,36 @@ class easyOCR(AbstractModel):
     def __init__(self, lang_list=['en'], gpu=True) -> None:
         self.model = easyocr.Reader(lang_list, gpu)
         
-    def test(self, json_file, verbose=False):
+    def test(self, json_file, images_path, verbose=False, predict_config={}):
         with open(json_file, 'rb') as fp:
             dict = json.loads(fp.read())
-            files = os.scandir(dict['images_path'])
 
             bleu_scores = []
             start = time.time()
-            for idx, file in enumerate(files):
-                if file.name.endswith((".png", ".jpeg", ".jpg")):
-                    references_raw = dict['images'][file.name]
-                    references = []
-                    for ref in references_raw:
-                        ref = re.sub(rf'[{string.punctuation}]', ' ', ref)
-                        ref = re.sub(r' +', ' ', ref)
-                        references.append(ref.split())
+            for idx, filename in enumerate(dict['images']):
+                references_raw = dict['images'][filename]
+                references = []
+                for ref in references_raw:
+                    ref = re.sub(rf'[{string.punctuation}]', ' ', ref)
+                    ref = re.sub(r' +', ' ', ref)
+                    references.append(ref.split())
 
-                    img = np.array(Image.open(file.path))
-                    res = self.predict(
-                        image=img, 
-                        low_text=0.5,
-                        threshold=0.5,
-                        min_size=5,
-                        mag_ratio=3,
-                        paragraph=True,
-                        detail=1,
-                        bbox_min_size=1,
-                        contrast_ths=0.3,
-                        adjust_contrast=0.5,
-                        rotation_info=[180]
-                    )
+                img = np.array(Image.open(os.path.join(images_path, filename)))
+                sentence = self.predict(image=img,**predict_config)
 
-                    sentence = ' '.join(res['text'])
-                    sentence = sentence.lower().strip()
-                    sentence = re.sub(rf'[{string.punctuation}]', ' ', sentence)
-                    sentence = re.sub(r' +', ' ', sentence)
+                sentence = sentence.lower().strip()
+                sentence = re.sub(rf'[{string.punctuation}]', ' ', sentence)
+                sentence = re.sub(r' +', ' ', sentence)
 
-                    bleu_score = sentence_bleu(references, sentence.split(), weights=(0.5, 0.3, 0.2, 0))
-                    bleu_scores.append(bleu_score)
+                bleu_score = sentence_bleu(references, sentence.split(), weights=(0.5, 0.3, 0.2, 0))
+                bleu_scores.append(bleu_score)
 
-                    if verbose:
-                        print(idx, ':', bleu_score)
-                        print(' '.join(references[0]))
-                        print(sentence)
-                        print("--------------------")
+                if verbose:
+                    print(idx, ':', bleu_score)
+                    print(' '.join(references[0]))
+                    print(sentence)
+                    print("--------------------")
+            
             end = time.time()
             bleu_scores = np.array(bleu_scores)
             if verbose:
