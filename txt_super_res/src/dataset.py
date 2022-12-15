@@ -16,7 +16,7 @@ class ImageDataset(Dataset):
         self.imgs = os.listdir(imgs_dir)
         self.transforms = transforms.Compose([
             transforms.ToPILImage(),
-            transforms.RandomCrop((200,400)),
+            transforms.RandomCrop((100,250)),
             transforms.ToTensor()
         ])
         self.interpolation = interpolation
@@ -32,10 +32,12 @@ class ImageDataset(Dataset):
         
         img_n = img.numpy()
         img_n = np.transpose(img_n, (1,2,0))
-                
-        image_blurred = cv2.resize(img_n, (int(img_n.shape[1]/3),int(img_n.shape[0]/3)), interpolation=cv2.INTER_LINEAR)
+             
+        rand = random.randint(0,1)
+              
+        image_blurred = cv2.resize(img_n, (int(img_n.shape[1]/3),int(img_n.shape[0]/3)))
         image_blurred = cv2.resize(image_blurred, (int(img_n.shape[1]),int(img_n.shape[0])), interpolation=cv2.INTER_LINEAR)
-        
+
         image_blurred = image_blurred.reshape(1, *image_blurred.shape)
         image_blurred = torch.from_numpy(image_blurred).type(torch.float32)  
         

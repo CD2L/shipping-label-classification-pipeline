@@ -7,7 +7,7 @@ import yaml
 from torch import nn
 from torch.utils.data import DataLoader
 from src.dataset import ImageDataset
-from src.model import SRResNetModel
+from src.model import SRResNetModel, EDSRModel
 from src.utils import PSNR, plot_images_couples, train, test, train_test_split
 #import tensorflow as tf
 
@@ -55,35 +55,7 @@ class MSExMGE(nn.Module):
         
     def forward(self, y_p, y_t):
         return self.mse(y_p, y_t)*self.mse_weight + self.mge(y_p,y_t)*self.mge_weight
-
-def MeanGradientError(outputs, targets, weight=0.1):
-    outputs = outputs.cpu().detach()
-    targets = targets.cpu().detach()
-    
-    
-    filter_x = tf.tile(tf.expand_dims(tf.constant([[-1, -2, -1], [0, 0, 0], [1, 2, 1]], dtype = float), axis = -1), [1, 1, outputs.shape[-1]])
-    filter_x = tf.tile(tf.expand_dims(filter_x, axis = -1), [1, 1, 1, outputs.shape[-1]])
-    filter_y = tf.tile(tf.expand_dims(tf.constant([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]], dtype = float), axis = -1), [1, 1, targets.shape[-1]])
-    filter_y = tf.tile(tf.expand_dims(filter_y, axis = -1), [1, 1, 1, targets.shape[-1]])
-
-    # output gradient
-    output_gradient_x = tf.math.square(tf.nn.conv2d(outputs, filter_x, strides = 1, padding = 'SAME'))
-    output_gradient_y = tf.math.square(tf.nn.conv2d(outputs, filter_y, strides = 1, padding = 'SAME'))
-
-    #target gradient
-    target_gradient_x = tf.math.square(tf.nn.conv2d(targets, filter_x, strides = 1, padding = 'SAME'))
-    target_gradient_y = tf.math.square(tf.nn.conv2d(targets, filter_y, strides = 1, padding = 'SAME'))
-
-    # square
-    output_gradients = tf.math.sqrt(tf.math.add(output_gradient_x, output_gradient_y))
-    target_gradients = tf.math.sqrt(tf.math.add(target_gradient_x, target_gradient_y))
-
-    # compute mean gradient error
-    shape = output_gradients.shape[1:3]
-    mge = tf.math.reduce_sum(tf.math.squared_difference(output_gradients, target_gradients) / (shape[0] * shape[1]))
-
-    return torch.tensor(mge * weight, requires_grad=True)
-    
+        
 def main(): 
     torch.cuda.empty_cache()
 
@@ -107,7 +79,12 @@ def main():
     model = nn.DataParallel(model)
     model = model.to(device)
     
-    loss_fn = MSExMGE(mge_weight=0.25)
+    if args['use_pretrained_model']:
+        weight = torch.load(args['checkpoint_filename'], map_location=torch.device('cuda'))
+        model.load_state_dict(weight['model'])
+        model = model.requires_grad_(True).to(device)    
+        
+    loss_fn = MSExMGE(mge_weight=0.21)
     optimizer = torch.optim.Adam(model.parameters(), lr=args['lr'], weight_decay=0.1)
     
     loss_history = {"fit": [], "val": []}

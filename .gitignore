@@ -13,5 +13,5 @@ outputs/
 /static
 *_dataset
 dataset*/
-checkpoints/
+checkpoints*/
 results/
