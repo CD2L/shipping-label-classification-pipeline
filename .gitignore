@@ -12,3 +12,6 @@ outputs/
 /weights
 /static
 *_dataset
+dataset*/
+checkpoints*/
+results/
