@@ -84,16 +84,18 @@ def main():
         model.load_state_dict(weight['model'])
         model = model.requires_grad_(True).to(device)    
         
-    loss_fn = MSExMGE(mge_weight=0.21)
+    loss_fn = MSExMGE(mge_weight=0.4)
     optimizer = torch.optim.Adam(model.parameters(), lr=args['lr'], weight_decay=0.1)
-    
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=int(args['num_epochs']/20), gamma=0.5)
+
     loss_history = {"fit": [], "val": []}
     acc_history = {"fit": [], "val": []}
     psnr_history = {"fit": [], "val": []}
     
     for epoch in range(1, args['num_epochs'] + 1):
-        train_loss, train_psnr = train(epoch, model, loss_fn, fit, optimizer, device)
+        train_loss, train_psnr = train(epoch, model, loss_fn, fit, optimizer, device, scheduler.get_last_lr())
         test_loss, test_psnr = test(model, loss_fn, val, device)
+        scheduler.step()
 
         loss_history["fit"].append(train_loss)
         loss_history["val"].append(test_loss)
@@ -102,7 +104,7 @@ def main():
         psnr_history["val"].append(test_psnr)
 
             
-        if show_sample and not epoch % 5:
+        if show_sample and not epoch % args['checkpoint_step']:
             sample_loader = torch.utils.data.DataLoader(
                 dataset, batch_size=args['batch_size'], shuffle=True, num_workers=0
             )

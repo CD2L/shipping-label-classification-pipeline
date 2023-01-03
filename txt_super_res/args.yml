@@ -1,8 +1,9 @@
-batch_size: 21
-num_epochs: 1000
+batch_size: 12
+num_epochs: 2000
 use_pretrained_model: True
 warmup_start: False
-lr: 0.00001
+checkpoint_step: 50
+lr: 0.001
 split_sizes: 0.9
 dataset_dirname: "./dataset-2"
-checkpoint_filename: "./checkpoints_saved/01_checkpoint_1000.pkl"
+checkpoint_filename: "./checkpoints_saved/04_checkpoint_450.pkl"

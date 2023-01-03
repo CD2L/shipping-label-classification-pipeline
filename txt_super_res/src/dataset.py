@@ -17,6 +17,9 @@ class ImageDataset(Dataset):
         self.transforms = transforms.Compose([
             transforms.ToPILImage(),
             transforms.RandomCrop((100,250)),
+            transforms.ColorJitter(brightness=.4, hue=.2),
+            transforms.RandomPosterize(bits=2,p=0.1),
+            transforms.RandomRotation(degrees=(-10, 10), interpolation=transforms.InterpolationMode.BILINEAR, fill=255),
             transforms.ToTensor()
         ])
         self.interpolation = interpolation

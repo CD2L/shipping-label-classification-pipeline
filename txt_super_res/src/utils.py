@@ -71,7 +71,7 @@ def train_test_split(dataset, train_size, batch_size, shuffle=True):
         ),
     )
 
-def train(epoch, model, loss_fn, data_loader, optimizer, device):
+def train(epoch, model, loss_fn, data_loader, optimizer, device, current_lr):
     model.train()
     train_loss = 0.0
     correct = 0.0
@@ -92,7 +92,7 @@ def train(epoch, model, loss_fn, data_loader, optimizer, device):
 
     print(
         f"train epoch {epoch}/{args['num_epochs']} ",
-        f"loss {train_loss:.5f} PSNR {psnr}",
+        f"loss {train_loss:.5f} PSNR {psnr} lr {current_lr}",
     )
 
     return train_loss, psnr
