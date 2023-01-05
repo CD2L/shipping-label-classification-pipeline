@@ -14,9 +14,6 @@ class ImageFolderDataset(Dataset):
         self.decoder_dict = {}
         self.device = device
         
-        img_scandir = os.scandir(imgs_dir)
-        self.one_hot = torch.eye(len(list(img_scandir)))
-
         for idx, cls in enumerate(os.scandir(imgs_dir)):
             self.encoder_dict[cls.name] = idx
             self.decoder_dict[idx] = cls.name
@@ -36,9 +33,7 @@ class ImageFolderDataset(Dataset):
     def __getitem__(self, index):
         img_path, lbl = self.imgs[index]
 
-        oh_lbl = self.one_hot[lbl]
-
         img = Image.open(img_path)
         img = self.transforms(img)
 
-        return img, oh_lbl
+        return img, lbl

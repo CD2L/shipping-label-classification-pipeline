@@ -1,5 +1,5 @@
 from src.dataset import ImageFolderDataset
-from src.models import ClfModel
+from src.models import BICModel
 from src.utils import train, test, plot_images, train_test_split
 import yaml
 import torch
@@ -10,15 +10,22 @@ def main():
     with open("./args.yml", "r") as fp:
         args = yaml.safe_load(fp)
 
+    if not os.path.isdir('./results'):
+        os.mkdir('./results')
+    if not os.path.isdir('./checkpoints'):
+        os.mkdir('./checkpoints')
+
+
     device = 'cuda'
     show_sample = True
     cls_labels = os.listdir(args["dataset_dirname"])
     
     dataset = ImageFolderDataset(args["dataset_dirname"], device=device)
 
-    train_dataloader, test_dataloader = train_test_split(dataset, 0.9, 300)
+    train_dataloader, test_dataloader = train_test_split(dataset, 0.9, args["batch_size"])
 
-    model = ClfModel().to(device).requires_grad_(True)
+    model = BICModel().to(device).requires_grad_(True)
+    model = torch.nn.DataParallel(model)
 
     loss_fn = CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=args['lr'], weight_decay=0.1)

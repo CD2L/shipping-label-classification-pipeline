@@ -2,7 +2,7 @@ pytesseract
 numpy
 torch
 tensorflow
-opencv-python
+opencv-python==4.5.5.64
 streamlit
 faker
 pillow

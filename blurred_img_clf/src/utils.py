@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import math
+import os
 from torch.nn import functional as F
 from torch.utils.data import DataLoader
 from torch.utils.data.sampler import SubsetRandomSampler
@@ -25,11 +26,13 @@ def plot_images(x, y_pred, y, epoch, labels):
         ax[1].text(0,0,labels[np.argmax(y_pred[row])]+" ("+str(y_pred[row][np.argmax(y_pred[row])])+")")
         ax[1].axis("off")
         
-        ax[2].text(0,0,labels[np.argmax(y[row])])
+        ax[2].text(0,0,labels[y[row]])
         ax[2].axis("off")
+
+    if not os.path.isdir('./results'):
+        os.mkdir('./results')
     plt.savefig(f"results/sample_epoch_{epoch}.jpg", dpi=1200)
     plt.close()
-
 
 def train_test_split(dataset, train_size, batch_size, shuffle=True):
     dataset_size = len(dataset)
@@ -61,6 +64,9 @@ def train(epoch, model, loss_fn, data_loader, optimizer, device):
     for batch_idx, (x, y) in enumerate(tqdm(data_loader)): 
         x, y = x.to(device), y.to(device)
         out = model(x)
+        # print(y[0])
+        # print(out[0])
+
         optimizer.zero_grad()
         loss = loss_fn(out,y)
         loss.backward()
